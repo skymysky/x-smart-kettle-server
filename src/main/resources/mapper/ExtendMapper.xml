@@ -1,0 +1,682 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.yaukie.frame.autocode.dao.mapper.ExtendMapper">
+    <!---转换异常次数-->
+    <select id="getTransWarningRecords" resultType="map" parameterType="map">
+        SELECT a.target_name targetName,a.target_id,a.warning_records warningRecords from (
+        SELECT
+        target_id,
+        target_name,
+        count(1) AS warning_records
+        FROM x_log_warning
+        WHERE log_type = 'trans'
+        AND
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+
+        AND target_id not in ( 'null')
+        GROUP BY target_id, target_name
+        ) a
+        ORDER BY a.warning_records DESC
+    </select>
+    <!--作业异常次数-->
+    <select id="getJobWarningRecords" resultType="map" parameterType="map">
+        SELECT a.target_id,a.target_name targetName,a.warning_records warningRecords from (SELECT
+        target_id,
+        target_name,
+        count(1) AS warning_records
+        FROM x_log_warning
+        WHERE log_type = 'job'
+        AND
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+
+        AND target_id not in( 'null')
+        GROUP BY target_id, target_name
+        ) a
+        ORDER BY a.warning_records DESC
+    </select>
+    <!--运行失败次数趋势图-->
+    <select id="getRunnedErrorTrend" resultType="map" parameterType="map">
+        SELECT a.cur_date,sum( DISTINCT a.fail_count) as curData from (
+        SELECT
+        fail_count,
+        substr(date_format(created_time, '%Y-%m-%d %H:%i:%s'), 1, 10) cur_date
+        FROM x_monitor
+        WHERE
+        1=1
+        AND date_format(created_time, '%Y-%m-%d')  in
+        <foreach collection="dateList" item="item" open="(" separator="," close=")">
+           #{item}
+        </foreach>
+
+        AND target_id not in ('null')
+        ) a
+        GROUP BY a.cur_date
+        ORDER BY cur_date
+    </select>
+    <!--运行成功次数趋势图-->
+    <select id="getRunnedOkTrend" resultType="map" parameterType="map">
+        SELECT a.cur_date,sum( DISTINCT a.success_count) as curData from (
+        SELECT
+        success_count,
+        substr(date_format(created_time, '%Y-%m-%d %H:%i:%s'), 1, 10) cur_date
+        FROM x_monitor
+        WHERE 1=1
+        AND date_format(created_time, '%Y-%m-%d')  in
+        <foreach collection="dateList" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+
+        AND target_id not in ( 'null')
+        ) a
+        GROUP BY a.cur_date
+        ORDER BY cur_date
+    </select>
+
+    <!--已运行实例总数趋势图-->
+    <select id="getRunnedInstancesTrend" resultType="map" parameterType="map">
+        SELECT a.cur_date,count( DISTINCT a.target_id) as curData from (
+        SELECT
+        target_id,
+        substr(date_format(created_time, '%Y-%m-%d %H:%i:%s'), 1, 10) cur_date
+        FROM x_monitor
+        WHERE
+        1=1
+
+        AND date_format(created_time, '%Y-%m-%d')  in
+        <foreach collection="dateList" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+
+        AND target_id not in ( 'null')
+        ) a
+        GROUP BY a.cur_date
+        ORDER BY cur_date
+    </select>
+
+    <!--常规转换实例-->
+    <select id="getNormalTransInstances" resultType="map" parameterType="map">
+        SELECT count(DISTINCT trans_id) AS normal_trans_instances
+        FROM x_trans
+        WHERE trans_id NOT IN (SELECT target_id
+        FROM x_quartz
+        WHERE quartz_type = 'trans')
+        AND
+        1=1
+
+    </select>
+    <!--常规作业实例-->
+    <select id="getNormalJobInstances" resultType="map" parameterType="map">
+        SELECT count(DISTINCT job_id) AS normal_job_instances
+        FROM x_job
+        WHERE job_id NOT IN (SELECT target_id
+        FROM x_quartz
+        WHERE quartz_type = 'job')
+        AND
+        1=1
+
+    </select>
+
+    <select id="getSpecialTransInstances" resultType="map" parameterType="map">
+        SELECT quartz_type,count(DISTINCT target_id) as special_trans_instances from x_quartz
+        WHERE
+        1=1
+        and  quartz_type='trans'
+
+
+        GROUP BY quartz_type
+    </select>
+
+    <!--作业定时任务总数-->
+    <select id="getSpecialJobInstances" resultType="map" parameterType="map">
+        SELECT quartz_type,count(DISTINCT target_id) as special_job_instances from x_quartz
+        WHERE
+        1=1
+       and  quartz_type='job'
+
+
+        GROUP BY quartz_type
+    </select>
+
+    <!--运行失败次数-->
+    <select id="getRunnedErrorSum" resultType="map" parameterType="map">
+        SELECT sum(fail_count) as runned_error_sum from x_monitor
+        WHERE target_id not in ( 'null') and target_status in ('-1','99') and
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+    </select>
+
+    <!--运行成功次数-->
+    <select id="getRunnedOkSum" resultType="map" parameterType="map">
+        SELECT sum(success_count) as runned_ok_sum from x_monitor
+        WHERE target_id not in ( 'null') and target_status in('40','30') and
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+    </select>
+
+    <!--已运行的实例总数-->
+    <select id="getRunnedInstances" resultType="map" parameterType="map">
+        SELECT count(DISTINCT target_id)
+        as runned_instances from x_monitor
+        WHERE target_id not in ('null') and
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+    </select>
+
+    <!--运行中的实例总数-->
+    <select id="getRunningInstances" resultType="map" parameterType="map">
+        SELECT count(DISTINCT target_id) as running_instances from x_monitor
+        WHERE target_id not in( 'null') and target_status in ('20','50') and
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+    </select>
+
+    <!--运行失败实例总数-->
+    <select id="getRunnedErrorInstances" resultType="map" parameterType="map">
+        SELECT count(DISTINCT target_id) as runned_error_instances from x_monitor
+        WHERE target_id not in ( 'null') and target_status in ('-1','99')
+        and
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+    </select>
+
+    <!--运行成功实例总数-->
+    <select id="getRunnedOkInstances" resultType="map" parameterType="map">
+
+        SELECT count(DISTINCT target_id) AS runned_ok_instances
+        FROM x_monitor
+        WHERE target_id not in( 'null') AND target_status IN ('40', '30') AND
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(created_time, '%Y-%m-%d') BETWEEN
+            #{startTime}
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            and #{stopTime}
+        </if>
+
+    </select>
+
+    <!--统计实例总数-->
+    <select id="getTotalInstances" resultType="map" parameterType="map">
+
+        SELECT sum(total) AS total_instances
+        FROM (
+        SELECT count(DISTINCT job_id) AS total
+        FROM x_job
+        WHERE
+        1=1
+
+        UNION ALL
+        SELECT count(DISTINCT trans_id) AS total
+        FROM x_trans
+        WHERE
+        1=1
+
+        ) a
+
+    </select>
+
+    <select id="qryLog" resultType="map" parameterType="map">
+        SELECT  log_type logType, target_id targetId,log_file_path logFilePath,start_time startTime,log_text logText FROM x_log WHERE log_id=#{logId}
+    </select>
+
+    <!--取作业或转换的预警日志-->
+    <select id="qryLogWarning" parameterType="map" resultType="map">
+        SELECT * FROM (
+        SELECT
+        log_id logId,
+        target_id targetId
+        ,
+        (SELECT job_name
+        FROM x_job
+        WHERE job_id = target_id) name,
+        log_type logType,
+        log_file logFile,
+        log_msg logMsg,
+        log_error logError,
+        log_subject logSub,
+        date_format(created_time,'%Y-%m-%d %H:%i:%S') startTime
+        FROM x_log_warning
+        WHERE
+        log_type = 'job'
+        UNION
+        SELECT
+        log_id logId,
+        target_id targetId
+        ,
+        (SELECT trans_name
+        FROM x_trans
+        WHERE trans_id = target_id) name,
+        log_type logType,
+        log_file logFile,
+        log_msg logMsg,
+        log_error logError,
+        log_subject logSub,
+        date_format(created_time,'%Y-%m-%d %H:%i:%S') startTime
+        FROM x_log_warning
+        WHERE
+        log_type = 'trans'
+        ) a
+
+        WHERE
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and date_format(a.startTime,'%Y-%m-%d') BETWEEN
+            str_to_date(#{startTime}, '%Y-%m-%d')
+        </if>
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y-%m-%d')
+        </if>
+        <if test="jobName !=null and jobName !=''">
+            and a.name like CONCAT('%', CONCAT(#{jobName}, '%'))
+        </if>
+        ORDER BY str_to_date(a.startTime,'%Y-%m-%d %H:%i:%S') DESC
+    </select>
+    <!--取日志详情-->
+    <select id="qryLogInfo" parameterType="map" resultType="map">
+        SELECT * FROM (SELECT
+        log_id logId,
+        target_id targetId,
+        log_file_path logFilePath
+        ,
+        (SELECT job_name
+        FROM x_job
+        WHERE job_id = target_id) name,
+        log_type logType,
+        start_time startTime,
+        stop_time stopTime,
+        target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_job_status'
+        AND dict_key = target_result) result
+        FROM x_log
+        WHERE
+        log_type = 'job'
+        UNION
+        SELECT
+        log_id logId,
+        target_id targetId,
+        log_file_path logFilePath,
+        (SELECT trans_name
+        FROM x_trans
+        WHERE trans_id = target_id) name,
+        log_type logType,
+        start_time startTime,
+        stop_time stopTime,
+        target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_trans_status'
+        AND dict_key = target_result) result
+        FROM x_log
+        WHERE
+        log_type = 'trans'
+        ) a
+        WHERE
+        1=1
+        <if test="startTime !=null and startTime !=''">
+            and str_to_date(a.startTime, '%Y.%m.%d') BETWEEN
+            str_to_date(#{startTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="jobName !=null and jobName !=''">
+            and a.name like CONCAT('%', CONCAT(#{jobName}, '%'))
+        </if>
+        <if test="targetResult !=null and targetResult !=''">
+            and a.targetResult =#{targetResult}
+        </if>
+
+        ORDER BY str_to_date(a.startTime, '%Y.%m.%d %H:%i:%S:%f') DESC
+
+    </select>
+
+    <!--查询当前定时列表-->
+    <select id="qrySchedulerInfo" parameterType="map" resultType="map">
+
+        SELECT *
+        FROM (SELECT
+        a.quartz_id quartzId,
+        a.target_id targetId,
+        (SELECT job_name
+        FROM x_job
+        WHERE job_id = a.target_id) name,
+        a.quartz_type quartzType,
+        a.quartz_cron quartzCron,
+        a.is_del isDel,
+        a.quartz_description quartzDescription,
+        c.start_time historyTime,
+        c.target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_job_status'
+        AND dict_key = c.target_result) result
+        FROM x_quartz a
+        LEFT JOIN (SELECT
+        target_id,
+        log_type,
+        start_time,
+        target_result
+        FROM (SELECT *
+        FROM x_log
+        WHERE
+        STR_TO_DATE(START_TIME, '%Y.%m.%d %H:%i:%S:%f') IN
+        (SELECT max(STR_TO_DATE(START_TIME, '%Y.%m.%d %H:%i:%S:%f'))
+        FROM x_log
+        WHERE log_type='job'
+        GROUP BY target_id)
+        ) b
+        WHERE 1=1
+        <if test="startTime !=null and startTime !=''">
+            and str_to_date(b.start_time, '%Y.%m.%d') BETWEEN
+            str_to_date(#{startTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y.%m.%d')
+        </if>
+        ) c
+        ON a.target_id = c.target_id
+        AND a.quartz_type = c.log_type
+
+        WHERE a.quartz_type = 'job'
+        UNION
+        SELECT
+        a.quartz_id quartzId,
+        a.target_id targetId,
+        (SELECT trans_name
+        FROM x_trans
+        WHERE trans_id = a.target_id) name,
+        a.quartz_type quartzType,
+        a.quartz_cron quartzCron,
+        a.is_del isDel,
+        a.quartz_description quartzDescription,
+        c.start_time historyTime,
+        c.target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_trans_status'
+        AND dict_key = c.target_result) result
+        FROM x_quartz a
+        LEFT JOIN (SELECT
+        target_id,
+        log_type,
+        start_time,
+        target_result
+        FROM
+        (SELECT *
+        FROM x_log
+        WHERE
+        STR_TO_DATE(START_TIME, '%Y.%m.%d %H:%i:%S:%f') IN
+        (SELECT max(STR_TO_DATE(START_TIME, '%Y.%m.%d %H:%i:%S:%f'))
+        FROM x_log
+        WHERE log_type='trans'
+        GROUP BY target_id)
+        ) b
+        WHERE 1=1
+
+        <if test="startTime !=null and startTime !=''">
+            and str_to_date(b.start_time, '%Y.%m.%d') BETWEEN
+            str_to_date(#{startTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y.%m.%d')
+        </if>
+        ) c
+
+        ON a.target_id = c.target_id
+        AND a.quartz_type = c.log_type
+
+        WHERE a.quartz_type = 'trans'
+        ) a
+        WHERE
+
+        1=1
+
+        <if test="name !=null and name !=''">
+            and a.name like CONCAT('%', CONCAT(#{name}, '%'))
+        </if>
+        <if test="targetResult !=null and targetResult !=''">
+            and a.targetResult =#{targetResult}
+        </if>
+
+        ORDER BY str_to_date(a.historyTime, '%Y.%m.%d %H:%i:%S:%f') DESC
+
+    </select>
+
+    <!--查询转换日志文件-->
+    <select id="qryTransLogText" parameterType="map" resultType="map">
+        SELECT a.log_text as logText
+FROM x_log a, (SELECT max(str_to_date(start_time,
+                                      '%Y.%m.%d %H:%i:%S:%f'))
+  max_date
+               FROM x_log
+               WHERE target_id = #{transId} AND log_type = 'trans') b
+WHERE str_to_date(start_time, '%Y.%m.%d %H:%i:%S:%f') = b.max_date
+
+    </select>
+
+    <!--查询作业日志文件-->
+    <select id="qryJobLogText" parameterType="map" resultType="map">
+        SELECT a.log_text as logText
+FROM x_log a, (SELECT max(str_to_date(start_time,
+                                      '%Y.%m.%d %H:%i:%S:%f'))
+  max_date
+               FROM x_log
+               WHERE target_id = #{jobId} AND log_type = 'job') b
+WHERE str_to_date(start_time, '%Y.%m.%d %H:%i:%S:%f') = b.max_date
+
+    </select>
+
+    <!---查询作业近期调度情况-->
+    <select id="qryJobPageInfo" resultType="map" parameterType="map">
+        SELECT * from (
+        SELECT
+        J.JOB_ID AS jobId,
+        j.job_name AS jobName,
+        j.job_description AS jobDescription,
+        (SELECT quartz_cron
+        FROM x_quartz
+        WHERE target_id = j.job_id AND is_del = '0' and quartz_type='job') AS cron,
+        (SELECT CASE WHEN quartz_description = ''
+        THEN '不需要定时'
+        ELSE quartz_description END quartz
+        FROM x_quartz
+        WHERE target_id = j.job_id AND is_del = '0' and quartz_type='job') AS quartz,
+        j.job_repository_id AS jobRepositoryId,
+        (SELECT REPO_NAME
+        FROM X_REPOSITORY
+        WHERE REPO_ID = J.JOB_REPOSITORY_ID) repoName,
+        J.JOB_TYPE AS jobType,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_log_level' AND dict_key = j.job_log_level) logLevel,
+        J.JOB_PATH jobPath,
+        J.JOB_DESCRIPTION jobDes,
+        J.IS_MONITOR_ENABLED isMonitorEnabled,
+        j.is_del isDel,
+        c.START_TIME startTime,
+        TIMESTAMPDIFF(SECOND, c.START_TIME, c.STOP_TIME) AS diff,
+        c.target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_job_status'
+        AND dict_key = c.target_result) result
+        FROM X_JOB J LEFT JOIN (select target_id,target_result,start_time,stop_time FROM
+        ( SELECT
+        G.TARGET_ID,
+        G.TARGET_RESULT,
+        G.START_TIME,
+        G.STOP_TIME
+        FROM X_LOG G, ( SELECT
+        TARGET_ID,
+        MAX(STR_TO_DATE(START_TIME, '%Y.%m.%d %H:%i:%S:%f')) AS START_TIME
+        FROM X_LOG
+        WHERE LOG_TYPE = 'job'
+        GROUP BY TARGET_ID
+        ) A
+        WHERE G.TARGET_ID = A.TARGET_ID
+        AND STR_TO_DATE(G.START_TIME, '%Y.%m.%d %H:%i:%S:%f') = A.START_TIME
+        ) B
+        WHERE 1 = 1
+        <if test="startTime !=null and startTime !=''">
+            and str_to_date(b.start_time, '%Y.%m.%d') BETWEEN
+            str_to_date(#{startTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y.%m.%d')
+        </if>
+
+        )c
+
+        ON J.JOB_ID = c.TARGET_ID
+        ) a
+        WHERE
+        1=1
+
+        <if test="jobName !=null and jobName !=''">
+            and a.jobName like CONCAT('%', CONCAT(#{jobName}, '%'))
+        </if>
+
+        <if test="targetResult !=null and targetResult !=''">
+            and a.targetResult =#{targetResult}
+        </if>
+        ORDER BY a.startTime DESC
+
+    </select>
+
+    <!---查询转换调度情况-->
+    <select id="qryTransPageInfo" resultType="map" parameterType="map">
+        SELECT *
+        FROM (
+        SELECT
+        j.trans_id AS transId,
+        j.trans_name AS transName,
+        j.trans_description AS transDescription,
+        (SELECT quartz_cron
+        FROM x_quartz
+        WHERE target_id = j.trans_id AND is_del = '0' and quartz_type='trans') AS cron,
+        (SELECT CASE WHEN quartz_description = ''
+        THEN '不需要定时'
+        ELSE quartz_description END quartz
+        FROM x_quartz
+        WHERE target_id = j.trans_id AND is_del = '0' and quartz_type='trans') AS quartz,
+        j.trans_repository_id AS transRepositoryid,
+        (SELECT repo_name
+        FROM x_repository
+        WHERE repo_id = j.trans_repository_id) repoName,
+        j.trans_type AS transType,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_log_level' AND dict_key = j.trans_log_level) logLevel,
+        j.trans_path transPath,
+        j.trans_description transDes,
+        j.is_monitor_enabled isMonitorEnabled,
+        j.is_del isDel,
+        c.start_time startTime,
+        timestampdiff(SECOND, c.start_time, c.stop_time) AS diff,
+        c.target_result targetResult,
+        (SELECT dict_value
+        FROM x_dict
+        WHERE dict_id = 'supported_trans_status' AND dict_key = c.target_result) result
+        FROM x_trans j LEFT JOIN (SELECT
+        target_id,
+        target_result,
+        start_time,
+        stop_time
+        FROM (SELECT
+        g.target_id,
+        g.target_result,
+        g.start_time,
+        g.stop_time
+        FROM x_log g, (SELECT
+        target_id,
+        max(str_to_date(start_time,
+        '%Y.%m.%d %H:%i:%S:%f')) AS start_time
+        FROM x_log
+        WHERE log_type = 'trans'
+        GROUP BY target_id) a
+        WHERE g.target_id = a.target_id AND
+        str_to_date(g.start_time, '%Y.%m.%d %H:%i:%S:%f') = a.start_time
+        ) b
+        WHERE 1 = 1
+        <if test="startTime !=null and startTime !=''">
+            and str_to_date(b.start_time, '%Y.%m.%d') BETWEEN
+            str_to_date(#{startTime}, '%Y.%m.%d')
+        </if>
+
+        <if test="stopTime !=null and stopTime !=''">
+            AND str_to_date(#{stopTime}, '%Y.%m.%d')
+        </if>
+
+        ) c
+        ON j.trans_id = c.target_id
+
+        ) a
+
+        WHERE
+        1=1
+
+        <if test="transName !=null and transName !=''">
+            and a.transName like CONCAT('%', CONCAT(#{transName}, '%'))
+        </if>
+
+        <if test="targetResult !=null and targetResult !=''">
+            and a.targetResult =#{targetResult}
+        </if>
+
+        ORDER BY a.startTime DESC
+
+    </select>
+
+</mapper>

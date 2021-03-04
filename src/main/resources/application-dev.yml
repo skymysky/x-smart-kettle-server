@@ -1,0 +1,70 @@
+#配置服务器
+server:
+  port: ${XTL_APP_SERVER_PORT:9876}
+  servlet:
+    context-path: ${XTL_APP_SERVER_PATH:/xtl-server}
+  #配置数据源
+spring:
+  redis:
+    enabled: ${XTL_REDIS_ENABLED:false}
+    host: ${XTL_REDIS_HOST:127.0.0.1}
+    port: ${XTL_REDIS_PORT:6379}
+    password: ${XTL_REDIS_PASS:root}
+    jedis:
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 500
+        min-idle: 0
+    lettuce:
+      shutdown-timeout: 0
+  application:
+    name: ${XTL_APP_NAME:xtl-app} #应用服务名称
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.jdbc.Driver
+    #系统数据库访问地址【必填项】
+    url: ${XTL_APP_DATASOURCE_URL:jdbc:mysql://localhost:3306/xtl?useUniCode=true&characterEncoding=UTF-8}
+    #系统数据库用户名【必填项】
+    username: ${XTL_APP_DATASOURCE_USERNAME:root}
+    #系统数据库密码【必填项】
+    password: ${XTL_APP_DATASOURCE_PASS:root}
+    # 关闭sharding-jdbc 必须为false
+  shardingsphere:
+    enabled: false
+kettle:
+  scheduler:
+    #是否开启定时调度，默认为fals，则系统启动不会自动执行定时
+    enabled: ${XTL_KETTLE_SCHEDULER:false}  #kettle定时调度启用为true,应用启动之后,自动将任务加入到定时器执行,设置为false则需要手动触发定时任务
+  log:
+    file:
+      #日志物理路径【必填项】
+      path: ${XTL_KETTLE_LOG_FILE_PATH:/xtl/kettle/logs} # 这个地方建议一定要配置一个存放目录,方便后期下载,查看历史执行记录,如果为"",则不会产生日志到服务器
+      size: ${XTL_KETTLE_LOG_FILE_SIZE:10} # 控制日志文件的大小,默认是10M,超过10M则截断请求
+  repo:
+    # 自定义数据库资源库 使用之前必须先定义资源库【必填项】
+    name: ${XTL_KETTLE_REPO_NAME:临时资源库} # 资源库名称【必填项】
+    hostName: ${XTL_KETTLE_DB_HOST:localhost} # 数据库连接地址【必填项】
+    dbPort: ${XTL_KETTLE_DB_PORT:3306} # 数据库端口 资源库目前仅支持MySQL【必填项】
+    dbName: ${XTL_KETTLE_DB_NAME:etl} # 数据库实例名【必填项】
+    userName: ${XTL_KETTLE_DB_USERNAME:root} #数据库用户名【必填项】
+    passWord: ${XTL_KETTLE_DB_PASS:root} # 数据库密码【必填项】
+    repoLoginName: ${XTL_KETTLE_REPO_LOGINNAME:admin} #资源库登录账户 默认admin【必填项】
+    repoLoginPass: ${XTL_KETTLE_REPO_LOGINPASS:admin} #资源库登录密码 默认admin【必填项】
+    # 该线程池会优先充满至最大的线程数（JDK默认优先将任务提交到队列，队列满了再充满至最大的线程数）
+  pool:
+    # 线程池前缀
+    namePrefix: ${XTL_THREAD_POOL_PREFIX:kettleThreadPool}
+    # 核心线程数
+    coreThreads: ${XTL_THREAD_POOL_CORE:20}
+    # 最大的线程数
+    maxThreads: ${XTL_THREAD_POOL_MAX:50}
+    # 队列容量
+    queueCapacity: ${XTL_THREAD_POOL_QUEUE_CAPACITY:100}
+    # 5分钟空闲则释放
+    keepAliveTimeMin: ${XTL_THREAD_POOL_KEEPALIVE:5}
+logging:
+  #系统日志存放路径
+  path: ${XTL_APP_LOG_PATH:/maven/xtl-web-server/logs}
+  level:
+    root: ${XTL_APP_LOG_LEVEL:info}
